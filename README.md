@@ -45,6 +45,8 @@ npm start
 
 ## Screenshots
 
+### Login View
+![Login](C:\Users\priya\OneDrive\Desktop\login.jpg)
 ### Dashboard View
 ![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+View)
 
