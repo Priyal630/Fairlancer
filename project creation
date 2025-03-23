@@ -1,0 +1,188 @@
+// src/components/projects/CreateProject.js
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const CreateProject = () => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    budget: '',
+    currency: 'USD',
+    category: '',
+    skills: '',
+    duration: ''
+  });
+  
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  
+  const { title, description, budget, currency, category, skills, duration } = formData;
+  
+  const onChange = e => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+  
+  const onSubmit = async e => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Convert skills string to array
+      const skillsArray = skills.split(',').map(skill => skill.trim());
+      
+      const res = await axios.post('/api/projects', {
+        ...formData,
+        skills: skillsArray,
+        budget: parseFloat(budget)
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      navigate(`/projects/${res.data.data._id}`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create project');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="create-project-container">
+      <h1>Post a New Project</h1>
+      <p>Describe your project in detail to attract the right freelancers</p>
+      
+      {error && <div className="alert alert-danger">{error}</div>}
+      
+      <form onSubmit={onSubmit}>
+        <div className="form-group">
+          <label htmlFor="title">Project Title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={title}
+            onChange={onChange}
+            required
+            placeholder="e.g., Website Redesign for E-commerce Store"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="description">Project Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={description}
+            onChange={onChange}
+            required
+            rows="6"
+            placeholder="Describe your project requirements in detail..."
+          ></textarea>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group half">
+            <label htmlFor="budget">Budget</label>
+            <input
+              type="number"
+              id="budget"
+              name="budget"
+              value={budget}
+              onChange={onChange}
+              required
+              min="5"
+              step="0.01"
+            />
+          </div>
+          
+          <div className="form-group half">
+            <label htmlFor="currency">Currency</label>
+            <select
+              id="currency"
+              name="currency"
+              value={currency}
+              onChange={onChange}
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="INR">INR</option>
+              <option value="AUD">AUD</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="category">Category</label>
+          <select
+            id="category"
+            name="category"
+            value={category}
+            onChange={onChange}
+            required
+          >
+            <option value="">Select a category</option>
+            <option value="web-development">Web Development</option>
+            <option value="mobile-apps">Mobile Apps</option>
+            <option value="design">Design</option>
+            <option value="writing">Writing & Translation</option>
+            <option value="marketing">Marketing</option>
+            <option value="admin">Admin Support</option>
+            <option value="customer-service">Customer Service</option>
+            <option value="data-entry">Data Entry</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="skills">Required Skills (comma separated)</label>
+          <input
+            type="text"
+            id="skills"
+            name="skills"
+            value={skills}
+            onChange={onChange}
+            placeholder="e.g., React, Node.js, MongoDB"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="duration">Expected Duration</label>
+          <select
+            id="duration"
+            name="duration"
+            value={duration}
+            onChange={onChange}
+            required
+          >
+  
+            <option value="">Select duration</option>
+            <option value="less-than-1-week">Less than 1 week</option>
+            <option value="1-2-weeks">1-2 weeks</option>
+            <option value="2-4-weeks">2-4 weeks</option>
+            <option value="1-3-months">1-3 months</option>
+            <option value="3-6-months">3-6 months</option>
+            <option value="more-than-6-months">More than 6 months</option>
+          </select>
+        </div>
+        
+        <button 
+          type="submit" 
+          className="btn btn-primary btn-block"
+          disabled={loading}
+        >
+          {loading ? 'Creating Project...' : 'Post Project'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default CreateProject;
+
