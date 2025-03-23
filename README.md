@@ -52,19 +52,19 @@ npm start
 ![Dashboard](C:\Users\priya\OneDrive\Desktop\dashboard.jpg)
 
 ### Milestones Page
-![Milestones](C:\Users\priya\OneDrive\Desktop\recent milestone.jpg)
+![Milestones](C:\Users\priya\OneDrive\Desktop\recentmilestone.jpg)
 
 ### Payment Integration
-![Payments](C:\Users\priya\OneDrive\Desktop\payment method.jpg)
+![Payments](C:\Users\priya\OneDrive\Desktop\paymentmethod.jpg)
 
 ### Recent Milestone
-![Resecnt](C:\Users\priya\OneDrive\Desktop\recent milestone.jpg)
+![Resecnt](C:\Users\priya\OneDrive\Desktop\recentmilestone.jpg)
 
 ### Currency Settings
-![Currency](C:\Users\priya\OneDrive\Desktop\currency settings.jpg)
+![Currency](C:\Users\priya\OneDrive\Desktop\currencysettings.jpg)
 
 ### Pending Milestone
-![Pending](C:\Users\priya\OneDrive\Desktop\pending pay.jpg)
+![Pending](C:\Users\priya\OneDrive\Desktop\pendingpay.jpg)
 
 
 ## Demo Data
