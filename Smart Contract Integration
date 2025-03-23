@@ -1,0 +1,285 @@
+// utils/blockchain.js
+import Web3 from 'web3';
+import EscrowContract from '../contracts/Escrow.json';
+
+let web3;
+let contract;
+
+export const initBlockchain = async () => {
+  if (window.ethereum) {
+    try {
+      // Request account access
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      web3 = new Web3(window.ethereum);
+      
+      // Get network ID
+      const networkId = await web3.eth.net.getId();
+      const deployedNetwork = EscrowContract.networks[networkId];
+      
+      contract = new web3.eth.Contract(
+        EscrowContract.abi,
+        deployedNetwork && deployedNetwork.address,
+      );
+      
+      return { web3, contract };
+    } catch (error) {
+      console.error("User denied account access");
+      return { error: "User denied account access" };
+    }
+  } else if (window.web3) {
+    // Legacy dapp browsers
+    web3 = new Web3(window.web3.currentProvider);
+    const networkId = await web3.eth.net.getId();
+    const deployedNetwork = EscrowContract.networks[networkId];
+    
+    contract = new web3.eth.Contract(
+      EscrowContract.abi,
+      deployedNetwork && deployedNetwork.address,
+    );
+    
+    return { web3, contract };
+  } else {
+    return { error: "Non-Ethereum browser detected. Consider using MetaMask!" };
+  }
+};
+
+export const createEscrow = async (amount, receiverAddress, projectId, milestoneId) => {
+  if (!web3 || !contract) {
+    const init = await initBlockchain();
+    if (init.error) return { error: init.error };
+    web3 = init.web3;
+    contract = init.contract;
+  }
+  
+  try {
+    const accounts = await web3.eth.getAccounts();
+    const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
+    
+    // Create escrow with metadata
+    const result = await contract.methods.createEscrow(
+      receiverAddress,
+      projectId,
+      milestoneId
+    ).send({
+      from: accounts[0],
+      value: weiAmount
+    });
+    
+    return {
+      success: true,
+      escrowId: result.events.EscrowCreated.returnValues.escrowId,
+      transactionHash: result.transactionHash
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
+export const releaseEscrow = async (escrowId) => {
+  if (!web3 || !contract) {
+    const init = await initBlockchain();
+    if (init.error) return { error: init.error };
+    web3 = init.web3;
+    contract = init.contract;
+  }
+  
+  try {
+    const accounts = await web3.eth.getAccounts();
+    
+    const result = await contract.methods.releaseEscrow(escrowId).send({
+      from: accounts[0]
+    });
+    
+    return {
+      success: true,
+      transactionHash: result.transactionHash
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
+export const resolveDispute = async (escrowId, releaseToReceiver) => {
+  if (!web3 || !contract) {
+    const init = await initBlockchain();
+    if (init.error) return { error: init.error };
+    web3 = init.web3;
+    contract = init.contract;
+  }
+  
+  try {
+    const accounts = await web3.eth.getAccounts();
+    
+    const result = await contract.methods.resolveDispute(
+      escrowId,
+      releaseToReceiver
+    ).send({
+      from: accounts[0]
+    });
+    
+    return {
+      success: true,
+      transactionHash: result.transactionHash
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
+// 15. Smart Contract (Solidity)
+// contracts/Escrow.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Escrow {
+    enum EscrowStatus { Active, Released, Disputed, Resolved }
+    
+    struct EscrowPayment {
+        address payable sender;
+        address payable receiver;
+        uint256 amount;
+        string projectId;
+        string milestoneId;
+        EscrowStatus status;
+        uint256 createdAt;
+    }
+    
+    mapping(uint256 => EscrowPayment) public escrows;
+    uint256 public escrowCounter;
+    
+    address public admin;
+    uint256 public platformFeePercent = 5; // 5% platform fee
+    
+    event EscrowCreated(
+        uint256 escrowId,
+        address sender,
+        address receiver,
+        uint256 amount,
+        string projectId,
+        string milestoneId
+    );
+    
+    event EscrowReleased(uint256 escrowId);
+    event EscrowDisputed(uint256 escrowId);
+    event DisputeResolved(uint256 escrowId, bool releasedToReceiver);
+    
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+    
+    modifier onlySender(uint256 escrowId) {
+        require(msg.sender == escrows[escrowId].sender, "Only the sender can call this function");
+        _;
+    }
+    
+    constructor() {
+        admin = msg.sender;
+    }
+    
+    function createEscrow(address payable receiver, string memory projectId, string memory milestoneId) external payable returns (uint256) {
+        require(msg.value > 0, "Escrow amount must be greater than 0");
+        require(receiver != address(0), "Invalid receiver address");
+        
+        uint256 escrowId = escrowCounter;
+        
+        // Calculate platform fee
+        uint256 fee = (msg.value * platformFeePercent) / 100;
+        uint256 escrowAmount = msg.value - fee;
+        
+        // Transfer fee to admin
+        payable(admin).transfer(fee);
+        
+        escrows[escrowId] = EscrowPayment({
+            sender: payable(msg.sender),
+            receiver: receiver,
+            amount: escrowAmount,
+            projectId: projectId,
+            milestoneId: milestoneId,
+            status: EscrowStatus.Active,
+            createdAt: block.timestamp
+        });
+        
+        emit EscrowCreated(
+            escrowId,
+            msg.sender,
+            receiver,
+            escrowAmount,
+            projectId,
+            milestoneId
+        );
+        
+        escrowCounter++;
+        return escrowId;
+    }
+    
+    function releaseEscrow(uint256 escrowId) external onlySender(escrowId) {
+        EscrowPayment storage escrow = escrows[escrowId];
+        
+        require(escrow.status == EscrowStatus.Active, "Escrow is not active");
+        
+        escrow.status = EscrowStatus.Released;
+        escrow.receiver.transfer(escrow.amount);
+        
+        emit EscrowReleased(escrowId);
+    }
+    
+    function disputeEscrow(uint256 escrowId) external {
+        EscrowPayment storage escrow = escrows[escrowId];
+        
+        require(
+            msg.sender == escrow.sender || msg.sender == escrow.receiver,
+            "Only sender or receiver can dispute"
+        );
+        require(escrow.status == EscrowStatus.Active, "Escrow is not active");
+        
+        escrow.status = EscrowStatus.Disputed;
+        
+        emit EscrowDisputed(escrowId);
+    }
+    
+    function resolveDispute(uint256 escrowId, bool releaseToReceiver) external onlyAdmin {
+        EscrowPayment storage escrow = escrows[escrowId];
+        
+        require(escrow.status == EscrowStatus.Disputed, "Escrow is not disputed");
+        
+        escrow.status = EscrowStatus.Resolved;
+        
+        if (releaseToReceiver) {
+            // Release to receiver
+            escrow.receiver.transfer(escrow.amount);
+        } else {
+            // Return to sender
+            escrow.sender.transfer(escrow.amount);
+        }
+        
+        emit DisputeResolved(escrowId, releaseToReceiver);
+    }
+    
+    function updatePlatformFee(uint256 newFeePercent) external onlyAdmin {
+        require(newFeePercent <= 10, "Fee cannot exceed 10%");
+        platformFeePercent = newFeePercent;
+    }
+    
+    function getEscrowDetails(uint256 escrowId) external view returns (
+        address sender,
+        address receiver,
+        uint256 amount,
+        string memory projectId,
+        string memory milestoneId,
+        EscrowStatus status,
+        uint256 createdAt
+    ) {
+        EscrowPayment storage escrow = escrows[escrowId];
+        return (
+            escrow.sender,
+            escrow.receiver,
+            escrow.amount,
+            escrow.projectId,
+            escrow.milestoneId,
+            escrow.status,
+            escrow.createdAt
+        );
+    }
+}
+
