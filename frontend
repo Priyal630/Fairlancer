@@ -1,1 +1,512 @@
+import React, { useState, useEffect } from "react";
 
+const LoginApp = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [view, setView] = useState("login"); // login, dashboard, milestones, payments, profile
+  const [milestones, setMilestones] = useState([]);
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({});
+  const [activeProjects, setActiveProjects] = useState([]);
+
+  // Handle login
+  const handleLogin = async () => {
+    try {
+      if (email && password) {
+        setMessage("Login successful!");
+        // Load dashboard data
+        loadDashboardData();
+        setView("dashboard");
+      } else {
+        throw new Error("Missing credentials");
+      }
+    } catch (error) {
+      setMessage("Login failed. Please check your credentials.");
+    }
+  };
+
+  // Load dashboard data
+  const loadDashboardData = () => {
+    // Mock dashboard statistics
+    setDashboardStats({
+      totalProjects: 12,
+      completedProjects: 7,
+      pendingMilestones: 5,
+      totalEarnings: 14500,
+      thisMonthEarnings: 3800,
+      clientSatisfaction: 92
+    });
+
+    // Mock active projects
+    setActiveProjects([
+      { id: 1, name: "Website Redesign", client: "ABC Corp", progress: 75, dueDate: "2025-04-15" },
+      { id: 2, name: "Mobile App Development", client: "XYZ Tech", progress: 40, dueDate: "2025-05-20" },
+      { id: 3, name: "SEO Optimization", client: "Local Business", progress: 90, dueDate: "2025-03-30" },
+      { id: 4, name: "E-commerce Platform", client: "Retail Giants", progress: 25, dueDate: "2025-06-10" }
+    ]);
+
+    // Mock milestones
+    setMilestones([
+      { id: 1, project_name: "Website Redesign", amount: 1500, status: "completed", due_date: "2025-03-10" },
+      { id: 2, project_name: "Mobile App Development", amount: 3000, status: "pending", due_date: "2025-04-05" },
+      { id: 3, project_name: "SEO Optimization", amount: 800, status: "pending", due_date: "2025-03-25" },
+      { id: 4, project_name: "E-commerce Platform", amount: 2500, status: "pending", due_date: "2025-04-20" },
+      { id: 5, project_name: "Content Marketing", amount: 1200, status: "completed", due_date: "2025-03-15" }
+    ]);
+  };
+
+  // Initialize Razorpay payment
+  const initializeRazorpayPayment = (milestone) => {
+    setPaymentInProgress(true);
+    setSelectedMilestone(milestone);
+    setPaymentSuccess(false);
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      handlePaymentSuccess({
+        razorpay_payment_id: pay_${Date.now()},
+        razorpay_order_id: order_${Date.now()},
+        razorpay_signature: "mock_signature"
+      });
+    }, 2000);
+  };
+
+  // Handle payment success
+  const handlePaymentSuccess = (response) => {
+    console.log("Payment successful:", response);
+    
+    // Update milestone status
+    const updatedMilestones = milestones.map(m => 
+      m.id === selectedMilestone.id ? { ...m, status: "completed" } : m
+    );
+    
+    setMilestones(updatedMilestones);
+    setPaymentInProgress(false);
+    setPaymentSuccess(true);
+    
+    // Update dashboard stats
+    setDashboardStats({
+      ...dashboardStats,
+      pendingMilestones: dashboardStats.pendingMilestones - 1,
+      totalEarnings: dashboardStats.totalEarnings + selectedMilestone.amount,
+      thisMonthEarnings: dashboardStats.thisMonthEarnings + selectedMilestone.amount
+    });
+    
+    // Simulate clearing success message after 3 seconds
+    setTimeout(() => {
+      setPaymentSuccess(false);
+      setSelectedMilestone(null);
+    }, 3000);
+  };
+
+  // Navigation component
+  const Navigation = () => (
+    <div className="bg-gray-800 text-white p-4">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="text-xl font-bold">FreelancerDash</div>
+        <div className="flex space-x-6">
+          <button 
+            onClick={() => setView("dashboard")} 
+            className={px-3 py-1 rounded-md ${view === "dashboard" ? "bg-blue-600" : "hover:bg-gray-700"}}
+          >
+            Dashboard
+          </button>
+          <button 
+            onClick={() => setView("milestones")} 
+            className={px-3 py-1 rounded-md ${view === "milestones" ? "bg-blue-600" : "hover:bg-gray-700"}}
+          >
+            Milestones
+          </button>
+          <button 
+            onClick={() => setView("payments")} 
+            className={px-3 py-1 rounded-md ${view === "payments" ? "bg-blue-600" : "hover:bg-gray-700"}}
+          >
+            Payments
+          </button>
+          <button 
+            onClick={() => setView("profile")} 
+            className={px-3 py-1 rounded-md ${view === "profile" ? "bg-blue-600" : "hover:bg-gray-700"}}
+          >
+            Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Dashboard component
+  const Dashboard = () => (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h1>
+        
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+            <h3 className="text-gray-500 text-sm">TOTAL EARNINGS</h3>
+            <p className="text-3xl font-bold">${dashboardStats.totalEarnings}</p>
+            <p className="text-sm text-gray-500 mt-2">This month: ${dashboardStats.thisMonthEarnings}</p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+            <h3 className="text-gray-500 text-sm">PROJECTS</h3>
+            <p className="text-3xl font-bold">{dashboardStats.totalProjects}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {dashboardStats.completedProjects} completed, 
+              {dashboardStats.totalProjects - dashboardStats.completedProjects} active
+            </p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+            <h3 className="text-gray-500 text-sm">PENDING MILESTONES</h3>
+            <p className="text-3xl font-bold">{dashboardStats.pendingMilestones}</p>
+            <p className="text-sm text-gray-500 mt-2">Client satisfaction: {dashboardStats.clientSatisfaction}%</p>
+          </div>
+        </div>
+        
+        {/* Active Projects */}
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">Active Projects</h2>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {activeProjects.map(project => (
+                <tr key={project.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{project.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{project.client}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-blue-600 h-2.5 rounded-full" 
+                        style={{ width: ${project.progress}% }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{project.progress}% completed</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{project.dueDate}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Recent Milestones */}
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">Recent Milestones</h2>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <ul className="divide-y divide-gray-200">
+            {milestones.slice(0, 3).map(milestone => (
+              <li key={milestone.id} className="py-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-lg font-semibold">{milestone.project_name}</p>
+                    <p className="text-sm text-gray-500">Due: {milestone.due_date}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold">${milestone.amount}</p>
+                    <p className={text-sm ${milestone.status === 'completed' ? 'text-green-500' : 'text-yellow-500'}}>
+                      {milestone.status}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button 
+            onClick={() => setView("milestones")}
+            className="mt-4 w-full py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          >
+            View All Milestones
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Milestones component
+  const Milestones = () => (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Project Milestones</h1>
+        
+        {paymentSuccess && (
+          <div className="mb-6 p-4 bg-green-100 text-green-800 rounded-md flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            Payment successful for {selectedMilestone?.project_name}!
+          </div>
+        )}
+        
+        {paymentInProgress && (
+          <div className="mb-6 p-4 bg-blue-100 text-blue-800 rounded-md flex items-center">
+            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing payment for {selectedMilestone?.project_name}...
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Pending Milestones */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Pending Milestones</h2>
+            <ul className="divide-y divide-gray-200">
+              {milestones.filter(m => m.status === 'pending').map(milestone => (
+                <li key={milestone.id} className="py-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-lg font-semibold">{milestone.project_name}</p>
+                      <p className="text-sm text-gray-500">Due: {milestone.due_date}</p>
+                      <p className="text-blue-600 font-medium mt-1">${milestone.amount}</p>
+                    </div>
+                    <button
+                      onClick={() => initializeRazorpayPayment(milestone)}
+                      disabled={paymentInProgress}
+                      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+                    >
+                      Pay Now
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {milestones.filter(m => m.status === 'pending').length === 0 && (
+                <li className="py-4 text-center text-gray-500">No pending milestones</li>
+              )}
+            </ul>
+          </div>
+          
+          {/* Completed Milestones */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Completed Milestones</h2>
+            <ul className="divide-y divide-gray-200">
+              {milestones.filter(m => m.status === 'completed').map(milestone => (
+                <li key={milestone.id} className="py-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-lg font-semibold">{milestone.project_name}</p>
+                      <p className="text-sm text-gray-500">Completed</p>
+                      <p className="text-blue-600 font-medium mt-1">${milestone.amount}</p>
+                    </div>
+                    <span className="px-4 py-2 bg-green-100 text-green-800 rounded-md">
+                      Paid
+                    </span>
+                  </div>
+                </li>
+              ))}
+              {milestones.filter(m => m.status === 'completed').length === 0 && (
+                <li className="py-4 text-center text-gray-500">No completed milestones</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Payments component with Razorpay integration details
+  const Payments = () => (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Payment Methods</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Razorpay Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Razorpay</h3>
+                <p className="text-sm text-gray-500">Primary payment method</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Secure and quick payments with Razorpay. Multiple payment options including credit/debit cards, 
+              UPI, net banking, and wallet.
+            </p>
+            <button className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+              Manage Payment Method
+            </button>
+          </div>
+          
+          {/* Add New Payment Method */}
+          <div className="bg-white rounded-lg shadow-md p-6 border-dashed border-2 border-gray-300 flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Add Payment Method</h3>
+            <p className="text-sm text-gray-500 text-center mb-4">
+              Add a new payment method to your account
+            </p>
+            <button className="w-full py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+              Add New Method
+            </button>
+          </div>
+        </div>
+        
+        {/* Payment Instructions */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">How Razorpay Payments Work</h2>
+          <ol className="list-decimal pl-5 space-y-2 mb-4">
+            <li>Navigate to the Milestones page and find the milestone you want to pay</li>
+            <li>Click the "Pay Now" button to initiate the payment process</li>
+            <li>The Razorpay payment form will appear with payment details</li>
+            <li>Choose your preferred payment method (card, UPI, netbanking, etc.)</li>
+            <li>Complete the payment and receive confirmation</li>
+          </ol>
+          <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md">
+            <p className="font-semibold">Note:</p>
+            <p>This is a demo implementation. In a real application, the following would be implemented:</p>
+            <ul className="list-disc pl-5 mt-2">
+              <li>Server-side order creation and verification</li>
+              <li>Webhook integration for payment status updates</li>
+              <li>Comprehensive error handling and retry mechanisms</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Profile component
+  const Profile = () => (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Your Profile</h1>
+        
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex flex-col sm:flex-row items-center">
+            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 sm:mb-0 sm:mr-6">
+              {email.substring(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">{email.split('@')[0]}</h2>
+              <p className="text-gray-500">{email}</p>
+              <div className="mt-2 flex space-x-2">
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Freelancer</span>
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Account Information</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={email} 
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input 
+                  type="password" 
+                  value="••••••••" 
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                />
+              </div>
+              <button className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                Update Information
+              </button>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Payment Settings</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default Payment Method</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option>Razorpay</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option>USD - US Dollar</option>
+                  <option>INR - Indian Rupee</option>
+                  <option>EUR - Euro</option>
+                </select>
+              </div>
+              <button className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      {view === "login" ? (
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+          <div className="w-96 p-8 shadow-2xl bg-white text-gray-900 rounded-lg">
+            <h2 className="text-2xl font-bold mb-6 text-center">Login to Your Account</h2>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mb-4 p-3 border rounded-md w-full"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mb-4 p-3 border rounded-md w-full"
+            />
+            <button 
+              onClick={handleLogin} 
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-md hover:opacity-90 transition font-semibold"
+            >
+              Login
+            </button>
+            {message && <p className="mt-4 text-center text-red-500 font-semibold">{message}</p>}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Navigation />
+          {view === "dashboard" && <Dashboard />}
+          {view === "milestones" && <Milestones />}
+          {view === "payments" && <Payments />}
+          {view === "profile" && <Profile />}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LoginApp;
