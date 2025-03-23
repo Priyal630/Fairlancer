@@ -47,14 +47,25 @@ npm start
 
 ### Login View
 ![Login](C:\Users\priya\OneDrive\Desktop\login.jpg)
+
 ### Dashboard View
-![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+View)
+![Dashboard](C:\Users\priya\OneDrive\Desktop\dashboard.jpg)
 
 ### Milestones Page
-![Milestones](https://via.placeholder.com/800x400?text=Milestones+Page)
+![Milestones](C:\Users\priya\OneDrive\Desktop\recent milestone.jpg)
 
 ### Payment Integration
-![Payments](https://via.placeholder.com/800x400?text=Payment+Integration)
+![Payments](C:\Users\priya\OneDrive\Desktop\payment method.jpg)
+
+### Recent Milestone
+![Resecnt](C:\Users\priya\OneDrive\Desktop\recent milestone.jpg)
+
+### Currency Settings
+![Currency](C:\Users\priya\OneDrive\Desktop\currency settings.jpg)
+
+### Pending Milestone
+![Pending](C:\Users\priya\OneDrive\Desktop\pending pay.jpg)
+
 
 ## Demo Data
 The application currently uses mock data for demonstration purposes. In a production environment, you would connect to a backend API for real data.
