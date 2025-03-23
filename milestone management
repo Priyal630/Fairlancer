@@ -1,0 +1,524 @@
+// src/components/milestones/MilestoneManagement.js
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import MilestoneCard from './MilestoneCard';
+import CreateMilestoneForm from './CreateMilestoneForm';
+
+const MilestoneManagement = () => {
+  const [project, setProject] = useState(null);
+  const [milestones, setMilestones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const { projectId } = useParams();
+  const { currentUser } = useAuth();
+  
+  useEffect(() => {
+    const fetchProjectAndMilestones = async () => {
+      try {
+        // Fetch project
+        const projectRes = await axios.get(`/api/projects/${projectId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        setProject(projectRes.data.data);
+        
+        // Fetch milestones for this project
+        const milestonesRes = await axios.get(`/api/projects/${projectId}/milestones`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        setMilestones(milestonesRes.data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load project data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProjectAndMilestones();
+  }, [projectId]);
+  
+  const handleCreateMilestone = async (milestoneData) => {
+    try {
+      const res = await axios.post(`/api/projects/${projectId}/milestones`, milestoneData, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      setMilestones([...milestones, res.data.data]);
+      setShowCreateForm(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create milestone');
+    }
+  };
+  
+  const handleSubmitWork = async (milestoneId, proofOfWork) => {
+    try {
+      const res = await axios.put(`/api/milestones/${milestoneId}/submit`, {
+        proofOfWork
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      // Update milestone in state
+      const updatedMilestones = milestones.map(m => 
+        m._id === milestoneId ? res.data.data : m
+      );
+      
+      setMilestones(updatedMilestones);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to submit work');
+    }
+  };
+  
+  const handleApproveMilestone = async (milestoneId, feedback) => {
+    try {
+      const res = await axios.put(`/api/milestones/${milestoneId}/approve`, {
+        feedback
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      // Update milestone in state
+      const updatedMilestones = milestones.map(m => 
+        m._id === milestoneId ? res.data.data : m
+      );
+      
+      setMilestones(updatedMilestones);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to approve milestone');
+    }
+  };
+  
+  const handleCreateDispute = async (milestoneId, disputeData) => {
+    try {
+      const res = await axios.post(`/api/milestones/${milestoneId}/disputes`, disputeData, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      // Update milestone status in state
+      const updatedMilestones = milestones.map(m => 
+        m._id === milestoneId ? { ...m, status: 'disputed' } : m
+      );
+      
+      setMilestones(updatedMilestones);
+      
+      return res.data.data;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create dispute');
+      return null;
+    }
+  };
+  
+  if (loading) return <div className="loader">Loading...</div>;
+  if (error) return <div className="alert alert-danger">{error}</div>;
+  if (!project) return <div className="alert alert-warning">Project not found</div>;
+  
+  const isEmployer = currentUser.id === project.employer._id;
+  const isFreelancer = currentUser.id === project.assignedTo;
+  
+  return (
+    <div className="milestone-management">
+      <div className="project-header">
+        <h1>{project.title}</h1>
+        <div className="project-details">
+          <p><strong>Status:</strong> {project.status}</p>
+          <p><strong>Budget:</strong> {project.currency} {project.budget}</p>
+        </div>
+      </div>
+      
+      <div className="milestone-controls">
+        <h2>Milestones</h2>
+        {isEmployer && project.status !== 'completed' && (
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? 'Cancel' : 'Add Milestone'}
+          </button>
+        )}
+      </div>
+      
+      {showCreateForm && (
+        <CreateMilestoneForm 
+          onSubmit={handleCreateMilestone}
+          projectBudget={project.budget}
+          currency={project.currency}
+        />
+      )}
+      
+      {milestones.length === 0 ? (
+        <div className="no-milestones">
+          <p>No milestones have been created for this project yet.</p>
+          {isEmployer && (
+            <p>Create milestones to break down the project into manageable tasks and set up escrow payments.</p>
+          )}
+        </div>
+      ) : (
+        <div className="milestones-list">
+          {milestones.map(milestone => (
+            <MilestoneCard
+              key={milestone._id}
+              milestone={milestone}
+              isEmployer={isEmployer}
+              isFreelancer={isFreelancer}
+              onSubmitWork={handleSubmitWork}
+              onApproveMilestone={handleApproveMilestone}
+              onCreateDispute={handleCreateDispute}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default MilestoneManagement;
+
+
+Milestone Card Component
+// src/components/milestones/MilestoneCard.js
+import React, { useState } from 'react';
+import FileUpload from '../common/FileUpload';
+
+const MilestoneCard = ({ 
+  milestone, 
+  isEmployer, 
+  isFreelancer,
+  onSubmitWork,
+  onApproveMilestone,
+  onCreateDispute
+}) => {
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [showApproveForm, setShowApproveForm] = useState(false);
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [description, setDescription] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [disputeReason, setDisputeReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const handleFileChange = (uploadedFiles) => {
+    setFiles(uploadedFiles);
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const proofOfWork = [{
+        fileUrl: files.length > 0 ? files[0].url : '',
+        description
+      }];
+      
+      await onSubmitWork(milestone._id, proofOfWork);
+      setShowSubmitForm(false);
+      setFiles([]);
+      setDescription('');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleApprove = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await onApproveMilestone(milestone._id, feedback);
+      setShowApproveForm(false);
+      setFeedback('');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleDispute = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const evidence = [{
+        fileUrl: files.length > 0 ? files[0].url : '',
+        description
+      }];
+      
+      await onCreateDispute(milestone._id, {
+        reason: disputeReason,
+        evidence
+      });
+      
+      setShowDisputeForm(false);
+      setDisputeReason('');
+      setFiles([]);
+      setDescription('');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'gray';
+      case 'in-progress':
+        return 'blue';
+      case 'submitted':
+        return 'orange';
+      case 'approved':
+        return 'green';
+      case 'disputed':
+        return 'red';
+      case 'released':
+        return 'green';
+      default:
+        return 'gray';
+    }
+  };
+  
+  return (
+    <div className="milestone-card">
+      <div className="milestone-header">
+        <h3>{milestone.title}</h3>
+        <div 
+          className="milestone-status"
+          style={{ backgroundColor: getStatusColor(milestone.status) }}
+        >
+          {milestone.status}
+        </div>
+      </div>
+      
+      <div className="milestone-details">
+        <p>{milestone.description}</p>
+        <p className="milestone-amount">Amount: ${milestone.amount}</p>
+        {milestone.dueDate && (
+          <p className="milestone-due">Due: {new Date(milestone.dueDate).toLocaleDateString()}</p>
+        )}
+      </div>
+      
+      {milestone.proofOfWork && milestone.proofOfWork.length > 0 && (
+        <div className="proof-of-work">
+          <h4>Submitted Work</h4>
+          {milestone.proofOfWork.map((proof, index) => (
+            <div key={index} className="proof-item">
+              {proof.fileUrl && (
+                <div className="proof-file">
+                  <a href={proof.fileUrl} target="_blank" rel="noopener noreferrer">
+                    View Attachment
+                  </a>
+                </div>
+              )}
+              {proof.description && (
+                <div className="proof-description">
+                  <p>{proof.description}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {milestone.feedbackFromEmployer && (
+        <div className="employer-feedback">
+          <h4>Employer Feedback</h4>
+          <p>{milestone.feedbackFromEmployer}</p>
+        </div>
+      )}
+      
+      <div className="milestone-actions">
+        {isFreelancer && milestone.status === 'pending' && (
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowSubmitForm(!showSubmitForm)}
+          >
+            Submit Work
+          </button>
+        )}
+        
+        {isEmployer && milestone.status === 'submitted' && (
+          <>
+            <button 
+              className="btn btn-success"
+              onClick={() => setShowApproveForm(!showApproveForm)}
+            >
+              Approve & Release Payment
+            </button>
+            <button 
+              className="btn btn-danger"
+              onClick={() => setShowDisputeForm(!showDisputeForm)}
+            >
+              Dispute
+            </button>
+          </>
+        )}
+        
+        {isFreelancer && milestone.status === 'submitted' && (
+          <button 
+            className="btn btn-danger"
+            onClick={() => setShowDisputeForm(!showDisputeForm)}
+          >
+            Raise Dispute
+          </button>
+        )}
+      </div>
+      
+      {showSubmitForm && (
+        <form className="submit-work-form" onSubmit={handleSubmit}>
+          <h4>Submit Your Work</h4>
+          
+          <div className="form-group">
+            <label>Upload File (optional)</label>
+            <FileUpload onChange={handleFileChange} maxFiles={1} />
+          </div>
+          
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+              rows="4"
+              placeholder="Describe what you've completed..."
+            ></textarea>
+          </div>
+          
+          <div className="form-actions">
+            <button 
+              type="button" 
+              className="btn btn-secondary"
+              onClick={() => setShowSubmitForm(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Submit Work'}
+            </button>
+          </div>
+        </form>
+      )}
+      
+      {showApproveForm && (
+        <form className="approve-work-form" onSubmit={handleApprove}>
+          <h4>Approve Work & Release Payment</h4>
+          
+          <div className="form-group">
+            <label>Feedback (optional)</label>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows="4"
+              placeholder="Provide feedback to the freelancer..."
+            ></textarea>
+          </div>
+          
+          <div className="approval-confirmation">
+            <p>
+              By approving this milestone, you confirm that the work meets your requirements 
+              and authorize the release of the escrow payment of ${milestone.amount}.
+            </p>
+          </div>
+          
+          <div className="form-actions">
+            <button 
+              type="button" 
+              className="btn btn-secondary"
+              onClick={() => setShowApproveForm(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="btn btn-success"
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Approve & Release Payment'}
+            </button>
+          </div>
+        </form>
+      )}
+      
+      {showDisputeForm && (
+        <form className="dispute-form" onSubmit={handleDispute}>
+          <h4>Create Dispute</h4>
+          
+          <div className="form-group">
+            <label>Reason for Dispute</label>
+            <textarea
+              value={disputeReason}
+              onChange={(e) => setDisputeReason(e.target.value)}
+              required
+              rows="4"
+              placeholder="Explain why you're disputing this milestone..."
+            ></textarea>
+          </div>
+          
+          <div className="form-group">
+            <label>Upload Evidence (optional)</label>
+            <FileUpload onChange={handleFileChange} maxFiles={1} />
+          </div>
+          
+          <div className="form-group">
+            <label>Evidence Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              placeholder="Describe the evidence you're providing..."
+            ></textarea>
+          </div>
+          
+          <div className="dispute-warning">
+            <p>
+              Creating a dispute will pause the payment process and involve admin review.
+              Our team will review the dispute and make a fair decision based on the evidence provided.
+            </p>
+          </div>
+          
+          <div className="form-actions">
+            <button 
+              type="button" 
+              className="btn btn-secondary"
+              onClick={() => setShowDisputeForm(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="btn btn-danger"
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Create Dispute'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
+
+export default MilestoneCard;
+
+
