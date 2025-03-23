@@ -1,7 +1,7 @@
 # Fairlancer
 # FreelancerDash
 
-![FreelancerDash Logo](https://via.placeholder.com/800x200?text=FreelancerDash)
+![FairlancerDash Logo](C:\Users\priya\OneDrive\Desktop\fairlancer.jpg)
 
 ## Overview
 FreelancerDash is a React-based dashboard application designed for freelancers to manage their projects, track milestones, handle payments, and monitor their overall business performance. The application provides an intuitive interface with real-time updates on project progress, milestone completion, and financial metrics.
